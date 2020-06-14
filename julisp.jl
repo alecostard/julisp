@@ -55,7 +55,7 @@ function read_from_tokens!(tokens)
 
     token = popfirst!(tokens)
     if token == "("
-        return read_list_from_tokens!(tokens)
+        read_list_from_tokens!(tokens)
     elseif token == ")"
         throw("Unexpected ')'")
     else
@@ -83,22 +83,40 @@ function atom(token)
         Symbol(token)
     end
 end
+
 "Evaluate an expr in an environment."
-eval(expr::Symbol, env=global_env) = env[expr]
-eval(expr::Number, env=global_env) = expr
-function eval(expr::List, env=global_env)
-    if expr[1] == "if"
-        (_, test, conseq, alt) = expr
-        x = eval(test, env) ? conseq : alt
-        eval(x, env)
-    elseif expr[1] == "define"
-        (_, symbol, exp) = expr
-        env[symbol] = eval(exp, env)
+eval(expr::Symbol, env = global_env) = env[expr]
+eval(expr::Number, _) = expr
+eval(expr::List, env = global_env) = eval_list(expr[1], expr[2:end], env)
+
+"Evaluate a list in an environment."
+function eval_list(op::Exp, args::List, env)
+    if op == "if"
+        eval_if(args, env)
+    elseif op == "define"
+        eval_define(args, env)
     else 
-        proc = eval(expr[1], env)
-        args = [eval(arg, env) for arg in expr[2:end]]
-        proc(args...)
+        eval_procedure(op, args, env)
     end
+end
+
+"Evaluate an if expression."
+function eval_if((test, conseq, alt), env) 
+    x = eval(test, env) ? conseq : alt
+    eval(x, env)
+end
+
+"Evaluate a define expression."
+function eval_define((symbol, exp), env) 
+    env[symbol] = eval(exp, env)
+    nothing
+end
+
+"Evaluate procedure call."
+function eval_procedure(proc_name, args, env)
+    proc = eval(proc_name, env)
+    evaluated_args = [eval(arg, env) for arg in args]
+    proc(evaluated_args...)
 end
 
 "A prompt-read-eval-print loop."
