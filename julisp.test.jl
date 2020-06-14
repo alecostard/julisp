@@ -3,46 +3,81 @@ using Test
 include("./julisp.jl")
 using .Julisp
 
-@testset "tokenize" begin
-    tokenize = Julisp.tokenize
-    @test ["1"] == Julisp.tokenize("1")
-    program1 = "(define x 1)"
-    @test ["(", "define", "x", "1", ")"] == Julisp.tokenize(program1)
-    program2 = "(* (+ 1 2) 3)"
-    @test ["(", "*", "(", "+", "1", "2", ")", "3", ")"] ==
-        Julisp.tokenize(program2)
-end
+@testset "Julisp" begin
 
-@testset "read_from_tokens!" begin
-    tokens = Julisp.tokenize("(inc 1)")
-    @test ["inc", 1] == Julisp.read_from_tokens!(tokens)
-end
+    @testset "tokenize" begin
+        tokenize = Julisp.tokenize
 
-@testset "read_list" begin
-    tokens1 = Julisp.tokenize("inc 1)")
-    @test ["inc", 1] == Julisp.read_list_from_tokens!(tokens1)
-    tokens2 = Julisp.tokenize("inc (dec 1))")
-    @test ["inc", ["dec", 1]] == Julisp.read_list_from_tokens!(tokens2)
-end
+        @testset "returns an empty list when input is empty" begin
+            @test [] == tokenize("")
+        end
 
-@testset "atom" begin
-    atom = Julisp.atom
-    @test 1 == atom("1")
-    @test 1.0 == atom("1.0")
-    @test "xyz" == atom("xyz")
-end
+        @testset "treats the input as space separated list" begin
+            @test ["1"] == tokenize("1")
+            @test ["a", "1", "2"] == tokenize("a 1 2")
+        end
 
-@testset "parse" begin
-   program1 = "(+ 2 (inc 3))" 
-   @test ["+", 2, ["inc", 3]] == Julisp.parse(program1)
-end
+        @testset "considers parenthesis a token even when not isolated" begin
+            @test ["(", "inc", "1", ")"] == tokenize(" ( inc 1 )   ")
 
-@testset "eval" begin
-    @test 1 == Julisp.eval(1)
-    program1 = Julisp.parse("(+ 1 2)")
-    @test 3 == Julisp.eval(program1)
-    program2 = Julisp.parse("(begin (define r 10) (* pi (* r r)))")
-    @test 100pi ≈ Julisp.eval(program2)
-    program3 = Julisp.parse("(if (= 2 1) (+ 1 3) (* 1 2))")
-    @test 2 == Julisp.eval(program3)
+            @test ["(", "define", "x", "1", ")"] == tokenize("(define x 1)")
+        
+            @test ["(", "*", "(", "+", "1", "2", ")", "3", ")"] == 
+                tokenize("(* (+ 1 2) 3)")
+        end
+    end
+
+    @testset "parse" begin
+        parse = Julisp.parse
+        read_from_tokens! = Julisp.read_from_tokens!
+
+        @testset "errors on empty input" begin
+            @test_throws ErrorException parse("")
+        end
+
+        @testset "errors on closed parenthesis before open parenthesis" begin
+            @test_throws ErrorException parse(")")
+        end
+
+        @testset "returns atoms on a single token" begin
+            @test 1 == parse("1")
+            @test 3.14 ≈ parse("3.14")
+            @test "xyz" == parse("xyz")
+        end
+
+        @testset "returns lists if input is multiple valued" begin
+            @test ["op"] == parse("(op)")
+            @test ["inc", 1] == parse("(inc 1)")
+            @test ["inc", ["+", 1, "x"]] == parse("(inc (+ 1 x))")
+        end
+    end
+
+    @testset "eval evaluates" begin
+        eval = Julisp.eval
+        @testset "numbers to themselves" begin
+            @test 1 == eval(1)
+            @test 3.14 ≈ eval(3.14)
+        end
+
+        @testset "symbols to their values in the environment" begin
+            @test pi == eval("pi")
+        end
+        
+        @testset "define expressions by adding a new binding to the environment" begin
+            eval(["define",  "x",  1])
+            @test 1 == eval("x")
+        end
+
+        @testset "function calls to their result" begin
+            @test 3 == eval(["+", 1, 2])
+            @test 9 == eval(["*", ["+", 1, 2], 3])
+        end
+
+        @testset "only the correct branch of an if expression" begin
+            @test_throws KeyError eval("oops")
+            @test 1 == eval(["if", ["=", 1, 1], 1, "oops"])
+            @test 1 == eval(["if", ["=", 1, 2], "oops", 1])
+        end
+    end
+
 end
