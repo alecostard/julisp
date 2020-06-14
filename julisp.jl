@@ -50,14 +50,14 @@ end
 "Read an expr from a sequence of tokens."
 function read_from_tokens!(tokens)
     if length(tokens) == 0
-        throw("Unexpected EOF")
+        error("Unexpected EOF")
     end
 
     token = popfirst!(tokens)
     if token == "("
         read_list_from_tokens!(tokens)
     elseif token == ")"
-        throw("Unexpected ')'")
+        error("Unexpected ')'")
     else
         atom(token)
     end
