@@ -5,11 +5,24 @@ Number = Union{Base.Int, Base.Float64}
 Atom   = Union{Symbol, Number}
 List   = Base.Vector
 Exp    = Union{Atom, List}
-Env    = Base.Dict
+
+""""An environment: a dict of {"var" => val} with an outer Env."""
+struct Env
+    table::Base.Dict
+    outer::Union{Nothing, Env}
+end
+Env(keys, vals, env) = Env(Dict(zip(keys, vals)), env)
+
+"Find the innermost Env where var appears."
+find(env, var)::Env = haskey(env.table, var) ? env : find(env.outer, var)
+
+"Methods for [] syntax."
+Base.getindex(env::Env, i) = find(env, i).table[i]
+Base.setindex!(env::Env, val, key) = setindex!(env.table, val, key)
 
 "An environment with some Scheme standard procedures."
 function standard_env()
-    env = Env()
+    env = Env(Base.Dict(), nothing)
     env["begin"] = (x...) -> x[end]
     env["pi"] = pi
     env["+"] = +
