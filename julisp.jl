@@ -111,16 +111,23 @@ eval(expr::List, env = global_env) = eval_list(expr[1], expr[2:end], env)
 
 "Evaluate a list in an environment."
 function eval_list(op::Exp, args::List, env)
-    if op == "if"
+    if op == "quote"
+        eval_quote(args)
+    elseif op == "if"
         eval_if(args, env)
     elseif op == "define"
         eval_define(args, env)
+    elseif op == "set!"
+        eval_set(args, env)
     elseif op == "lambda"
         eval_lambda(args, env)
     else 
         eval_procedure(op, args, env)
     end
 end
+
+"Evaluate a quoted expression."
+eval_quote(args) = args[1]
 
 "Evaluate an if expression."
 function eval_if((test, conseq, alt), env) 
@@ -133,6 +140,9 @@ function eval_define((symbol, exp), env)
     env[symbol] = eval(exp, env)
     nothing
 end
+
+"Evaluate a set! expression."
+eval_set((symbol, exp), env) = find(env, symbol)[symbol] = eval(exp, env)
 
 "Evaluate a lambda expression."
 eval_lambda((params, body), env) = Procedure(params, body, env)
