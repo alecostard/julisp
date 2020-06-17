@@ -116,8 +116,7 @@ function eval_list(op::Exp, args::List, env)
     elseif op == "define"
         eval_define(args, env)
     elseif op == "lambda"
-        (params, body) = args
-        Procedure(params, body, env)
+        eval_lambda(args, env)
     else 
         eval_procedure(op, args, env)
     end
@@ -134,6 +133,9 @@ function eval_define((symbol, exp), env)
     env[symbol] = eval(exp, env)
     nothing
 end
+
+"Evaluate a lambda expression."
+eval_lambda((params, body), env) = Procedure(params, body, env)
 
 "Evaluate procedure call."
 function eval_procedure(expr, args, env)
