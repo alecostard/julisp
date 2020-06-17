@@ -83,6 +83,21 @@ using .Julisp
             program = "((lambda (x y) (+ x y)) 1 2)"
             @test 3 == program |> Julisp.parse |> eval
         end
+
+        @testset "quoted expressions to themselves" begin
+            program1 = "(quote (1 2 3))"
+            @test [1, 2, 3] == program1 |> Julisp.parse |> eval
+            program2 = "(quote a)"
+            @test "a" == program2 |> Julisp.parse |> eval
+        end
+
+        @testset "set! by changing the binding in the closest environment" begin
+            eval(["define", "x", 0])
+            eval(["set!", "x", 1])
+            @test 1 == eval("x")
+            eval(["define", "reset", ["lambda", [], ["set!", "x", 0]]])
+            @test 0 == eval(["reset"])
+        end
     end
 
 end
