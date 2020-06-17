@@ -20,6 +20,13 @@ find(env, var)::Env = haskey(env.table, var) ? env : find(env.outer, var)
 Base.getindex(env::Env, i) = find(env, i).table[i]
 Base.setindex!(env::Env, val, key) = setindex!(env.table, val, key)
 
+"A user-defined Scheme procedure."
+struct Procedure
+    params
+    body
+    env
+end
+
 "An environment with some Scheme standard procedures."
 function standard_env()
     env = Env(Base.Dict(), nothing)
@@ -108,6 +115,9 @@ function eval_list(op::Exp, args::List, env)
         eval_if(args, env)
     elseif op == "define"
         eval_define(args, env)
+    elseif op == "lambda"
+        (params, body) = args
+        Procedure(params, body, env)
     else 
         eval_procedure(op, args, env)
     end
@@ -126,11 +136,16 @@ function eval_define((symbol, exp), env)
 end
 
 "Evaluate procedure call."
-function eval_procedure(proc_name, args, env)
-    proc = eval(proc_name, env)
+function eval_procedure(expr, args, env)
+    proc = eval(expr, env)
     evaluated_args = [eval(arg, env) for arg in args]
-    proc(evaluated_args...)
+    apply(proc, evaluated_args...)
 end
+
+"Apply a procedure to its arguments."
+apply(proc::Procedure, args...) =
+    eval(proc.body, Env(proc.params, args, proc.env))
+apply(proc, args...) = proc(args...)
 
 "A prompt-read-eval-print loop."
 function repl(prompt="julisp> ")
@@ -142,6 +157,8 @@ end
 
 "Convert a Julia object back into a Scheme-readable string."
 schemestr(atom::Atom) = string(atom)
-schemestr(list::List) = "(" * join(list, " ") * ")"
+schemestr(list::List) = "($(join(list, " ")))"
+schemestr(::Nothing) = ""
+schemestr(::Procedure) = ""
 
 end # module

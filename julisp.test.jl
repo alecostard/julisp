@@ -68,15 +68,20 @@ using .Julisp
             @test 1 == eval("x")
         end
 
-        @testset "function calls to their result" begin
+        @testset "primitive function application to their result" begin
             @test 3 == eval(["+", 1, 2])
             @test 9 == eval(["*", ["+", 1, 2], 3])
         end
 
         @testset "only the correct branch of an if expression" begin
-            @test_throws KeyError eval("oops")
+            @test_throws Exception eval("oops")
             @test 1 == eval(["if", ["=", 1, 1], 1, "oops"])
             @test 1 == eval(["if", ["=", 1, 2], "oops", 1])
+        end
+
+        @testset "anonymous procedure applications to their result" begin
+            program = "((lambda (x y) (+ x y)) 1 2)"
+            @test 3 == program |> Julisp.parse |> eval
         end
     end
 
